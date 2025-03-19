@@ -1,0 +1,37 @@
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .tooltip {
+    position: absolute;
+    bottom: 120%; /* Tooltip appears above */
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    max-width: 250px; /* Limits tooltip width */
+    text-align: center;
+    word-wrap: break-word;
+    white-space: normal; /* Allows multi-line text */
+  }
+  
+  .tooltip-arrow {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -5px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid rgba(0, 0, 0, 0.85);
+  }
+  
+  /* Extra fix to make sure tooltip stays centered */
+  .tooltip-container {
+    display: flex;
+    justify-content: center;
+  }
+  
