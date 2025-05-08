@@ -6,14 +6,16 @@ import { ChatListItem } from './chat-list-item';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 interface ChatListProps {
   chats: Chat[];
   selectedChatId: string | null;
   onSelectChat: (chatId: string) => void;
+  className?: string;
 }
 
-export function ChatList({ chats, selectedChatId, onSelectChat }: ChatListProps) {
+export function ChatList({ chats, selectedChatId, onSelectChat, className }: ChatListProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredChats = useMemo(() => {
@@ -24,19 +26,19 @@ export function ChatList({ chats, selectedChatId, onSelectChat }: ChatListProps)
   }, [chats, searchTerm]);
 
   return (
-    <div className="flex flex-col h-full border-r border-border bg-background">
-      <div className="p-4 border-b border-border">
+    <div className={cn("flex flex-col h-full bg-background", className)}>
+      <div className="p-3 border-b border-border">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search chats..." 
-            className="pl-10"
+            className="pl-10 text-sm h-9"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0"> {/* Ensure ScrollArea is flexible */}
         {filteredChats.length > 0 ? (
           filteredChats.map((chat) => (
             <ChatListItem

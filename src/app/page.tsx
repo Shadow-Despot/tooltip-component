@@ -140,7 +140,7 @@ export default function MonochromeChatPage() {
 
   return (
     <div className="flex h-screen antialiased text-foreground bg-background overflow-hidden">
-      <main className="flex-1 flex min-w-0">
+      <main className="flex-1 flex flex-col min-w-0"> {/* Ensure main content area can shrink and is a column */}
         <ChatView 
           chat={selectedChat} 
           onSendMessage={handleSendMessage}
@@ -148,7 +148,8 @@ export default function MonochromeChatPage() {
           onDeleteMessage={handleDeleteMessage}
         />
       </main>
-      <ChatManagementSidebar 
+      <ChatManagementSidebar
+        className="w-full md:w-96 flex-shrink-0 border-l border-border" // Responsive width and prevent shrinking
         chats={chats} 
         selectedChatId={selectedChatId} 
         onSelectChat={handleSelectChat}

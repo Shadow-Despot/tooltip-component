@@ -18,9 +18,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { otherUsers, currentUser } from '@/lib/dummy-data'; // For contact list
+import { currentUser } from '@/lib/dummy-data'; 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface ChatManagementSidebarProps {
   chats: Chat[];
@@ -29,7 +30,8 @@ interface ChatManagementSidebarProps {
   onAddChat: (contact: User) => void;
   onDeleteChat: (chatId: string) => void;
   onAddContact: (name: string, avatarSeed?: string) => void;
-  availableContacts: User[]; // Assuming we manage contacts outside for now
+  availableContacts: User[];
+  className?: string; 
 }
 
 export function ChatManagementSidebar({ 
@@ -39,7 +41,8 @@ export function ChatManagementSidebar({
   onAddChat,
   onDeleteChat,
   onAddContact,
-  availableContacts
+  availableContacts,
+  className
 }: ChatManagementSidebarProps) {
   const { toast } = useToast();
   const [newContactName, setNewContactName] = useState('');
@@ -66,12 +69,12 @@ export function ChatManagementSidebar({
   }
 
   return (
-    <aside className="w-96 flex flex-col h-full border-l border-border bg-sidebar">
+    <aside className={cn("flex flex-col h-full bg-sidebar", className)}>
       <SidebarHeader 
         onAddNewChat={() => setIsNewChatDialogOpen(true)} 
         onAddNewContact={() => setIsAddContactDialogOpen(true)} 
       />
-      <ChatList chats={chats} selectedChatId={selectedChatId} onSelectChat={onSelectChat} />
+      <ChatList className="flex-1 min-h-0" chats={chats} selectedChatId={selectedChatId} onSelectChat={onSelectChat} /> {/* Ensure ChatList takes remaining space */}
 
       {/* Add New Contact Dialog */}
       <Dialog open={isAddContactDialogOpen} onOpenChange={setIsAddContactDialogOpen}>
@@ -134,10 +137,10 @@ export function ChatManagementSidebar({
                 className="flex items-center w-full p-2 hover:bg-accent rounded-md transition-colors"
               >
                 <Avatar className="h-10 w-10 mr-3">
-                  <AvatarImage src={contact.avatarUrl} alt={contact.name} data-ai-hint="profile avatar" />
+                  <AvatarImage src={contact.avatarUrl} alt={contact.name} data-ai-hint="profile avatar"/>
                   <AvatarFallback>{contact.name.substring(0,1).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <span>{contact.name}</span>
+                <span className="truncate">{contact.name}</span>
               </button>
             ))}
             {availableContacts.filter(c => c.id !== currentUser.id).length === 0 && (

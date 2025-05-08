@@ -12,7 +12,7 @@ interface ChatHeaderProps {
 export function ChatHeader({ chat }: ChatHeaderProps) {
   if (!chat) {
     return (
-      <div className="h-[68px] p-4 border-b border-border bg-secondary flex items-center justify-between">
+      <div className="h-[60px] sm:h-[68px] p-3 sm:p-4 border-b border-border bg-secondary flex items-center justify-between flex-shrink-0">
          {/* Placeholder or default content if no chat is selected */}
       </div>
     );
@@ -21,33 +21,32 @@ export function ChatHeader({ chat }: ChatHeaderProps) {
   const FallbackName = chat.name.substring(0, 1).toUpperCase();
 
   return (
-    <div className="h-[68px] p-4 border-b border-border bg-secondary flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10">
+    <div className="h-[60px] sm:h-[68px] p-3 sm:p-4 border-b border-border bg-secondary flex items-center justify-between flex-shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0"> {/* min-w-0 for truncation */}
+        <Avatar className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"> {/* flex-shrink-0 */}
           <AvatarImage src={chat.avatarUrl} alt={chat.name} data-ai-hint="profile avatar" />
           <AvatarFallback>{FallbackName}</AvatarFallback>
         </Avatar>
-        <div>
-          <h2 className="font-semibold text-sm">{chat.name}</h2>
-          {/* Could add online status or last seen here */}
-          <p className="text-xs text-muted-foreground">Online</p> 
+        <div className="flex-1 min-w-0"> {/* flex-1 and min-w-0 for truncation */}
+          <h2 className="font-semibold text-sm truncate">{chat.name}</h2>
+          <p className="text-xs text-muted-foreground truncate">Online</p> 
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon">
-          <Video className="h-5 w-5" />
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0"> {/* flex-shrink-0 */}
+        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+          <Video className="h-4 w-4 sm:h-5 sm:w-5" />
           <span className="sr-only">Video call</span>
         </Button>
-        <Button variant="ghost" size="icon">
-          <Phone className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+          <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
           <span className="sr-only">Audio call</span>
         </Button>
-        <Button variant="ghost" size="icon">
-          <Search className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+          <Search className="h-4 w-4 sm:h-5 sm:w-5" />
           <span className="sr-only">Search in chat</span>
         </Button>
-        <Button variant="ghost" size="icon">
-          <MoreVertical className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+          <MoreVertical className="h-4 w-4 sm:h-5 sm:w-5" />
           <span className="sr-only">More options</span>
         </Button>
       </div>
