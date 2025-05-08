@@ -7,7 +7,7 @@ import { ChatManagementSidebar } from '@/components/sidebar/chat-management-side
 import type { Chat, Message, User } from '@/types/chat';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/auth-provider';
-import { useRouter } from 'next/navigation';
+// useRouter is not needed for redirection here anymore
 import { 
   streamUserChats, 
   sendMessage as sendMessageService,
@@ -18,16 +18,15 @@ import {
   markMessagesAsRead,
   getCurrentUserData
 } from '@/services/chatService';
-import { collection, getDocs, onSnapshot, query, Unsubscribe, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, Unsubscribe, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from '@/lib/utils'; // Added cn utility
+import { cn } from '@/lib/utils'; 
 
 export default function MonochromeChatPage() {
-  const { currentUser, loading: authLoading } = useAuth();
-  const router = useRouter();
+  const { currentUser, isLoadingAuthState } = useAuth(); // Use isLoadingAuthState
   const { toast } = useToast();
 
   const [chats, setChats] = useState<Chat[]>([]);
@@ -47,7 +46,6 @@ export default function MonochromeChatPage() {
       setIsMobileView(mobile);
       if (!mobile && mobileView === 'chat' && !selectedChatId) {
         // If switching to desktop and chat view was open without a selected chat, revert to list
-        // This case should ideally not happen if selectedChatId is managed well
       } else if (mobile && selectedChatId) {
         setMobileView('chat');
       } else if (mobile && !selectedChatId) {
@@ -59,11 +57,12 @@ export default function MonochromeChatPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, [selectedChatId, mobileView]);
 
-  useEffect(() => {
-    if (!authLoading && !currentUser) {
-      router.push('/login');
-    }
-  }, [currentUser, authLoading, router]);
+  // AuthProvider now handles redirection if !currentUser and !isLoadingAuthState
+  // useEffect(() => {
+  //   if (!isLoadingAuthState && !currentUser) {
+  //     router.push('/login'); // This logic is moved to AuthProvider
+  //   }
+  // }, [currentUser, isLoadingAuthState, router]);
 
   useEffect(() => {
     let unsubscribeChats: Unsubscribe | undefined;
@@ -75,8 +74,7 @@ export default function MonochromeChatPage() {
         setChats(fetchedChats);
         setIsLoadingChats(false);
         if (!selectedChatId && fetchedChats.length > 0 && !isMobileView) {
-           // Optionally auto-select first chat on desktop if none selected
-           // setSelectedChatId(fetchedChats[0].id); 
+           //setSelectedChatId(fetchedChats[0].id); 
         } else if (selectedChatId && !fetchedChats.some(c => c.id === selectedChatId)) {
             setSelectedChatId(fetchedChats.length > 0 && !isMobileView ? fetchedChats[0].id : null); 
         }
@@ -84,8 +82,9 @@ export default function MonochromeChatPage() {
 
       setIsLoadingUsers(true);
       const usersCollectionRef = collection(db, "users");
-      const q = query(usersCollectionRef, where("email", "!=", currentUser.email)); 
-      unsubscribeUsers = onSnapshot(q, (snapshot) => {
+      // Query for users whose email is not the current user's email
+      const qUsers = query(usersCollectionRef, where("email", "!=", currentUser.email)); 
+      unsubscribeUsers = onSnapshot(qUsers, (snapshot) => {
         const usersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
         setAllUsers(usersList);
         setIsLoadingUsers(false);
@@ -94,12 +93,18 @@ export default function MonochromeChatPage() {
         toast({title: "Error", description: "Could not load users.", variant: "destructive"});
         setIsLoadingUsers(false);
       });
+    } else {
+      // If no current user, clear chats and users, and stop loading them.
+      setChats([]);
+      setAllUsers([]);
+      setIsLoadingChats(false);
+      setIsLoadingUsers(false);
     }
     return () => {
       if (unsubscribeChats) unsubscribeChats();
       if (unsubscribeUsers) unsubscribeUsers();
     };
-  }, [currentUser, toast, isMobileView]); 
+  }, [currentUser, toast, isMobileView, selectedChatId]); // Added selectedChatId to dependencies
 
   const handleSelectChat = useCallback(async (chatId: string) => {
     setSelectedChatId(chatId);
@@ -162,32 +167,32 @@ export default function MonochromeChatPage() {
   const handleBackToList = () => {
     if (isMobileView) {
       setMobileView('list');
-      // setSelectedChatId(null); // Deselect chat when going back to list on mobile
     }
   };
 
   const selectedChat = chats.find(chat => chat.id === selectedChatId) || null;
 
-  if (authLoading || (isLoadingChats && chats.length === 0) || (isLoadingUsers && allUsers.length === 0 && !currentUser) ) {
+  // If initial auth state is loading, show a full-page loader.
+  // AuthProvider will handle redirection if !currentUser after isLoadingAuthState is false.
+  // Also consider if currentUser is briefly null during data loading.
+  if (isLoadingAuthState || (!currentUser && !isLoadingAuthState) || (currentUser && (isLoadingChats || isLoadingUsers) && chats.length === 0 && allUsers.length === 0) ) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
-  if (!currentUser && !authLoading) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background text-center">
-        <p>Redirecting to login...</p>
-        <Loader2 className="ml-2 h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
   
+  // At this point, if !currentUser, AuthProvider should have redirected.
+  // So, if we are here and !currentUser, it's an unexpected state, but better to show loader than crash.
+  // However, the above condition `(!currentUser && !isLoadingAuthState)` should ideally lead to AuthProvider redirecting.
+  // For safety, if somehow currentUser is null after all loading, it's an issue.
+  // But the primary loader above should catch most initial loading states.
+
   const sidebarComponent = (
       <ChatManagementSidebar
         className={cn(
-          "w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-border h-full", // Adjusted width and border
+          "w-full md:w-80 lg:w-96 flex-shrink-0 border-r border-border h-full",
           isMobileView && mobileView === 'chat' ? 'hidden' : 'flex',
           isMobileView && mobileView === 'list' ? 'flex w-full h-full' : ''
         )}
@@ -195,7 +200,7 @@ export default function MonochromeChatPage() {
         selectedChatId={selectedChatId} 
         onSelectChat={handleSelectChat}
         allUsers={allUsers}
-        isLoadingChats={isLoadingChats || isLoadingUsers}
+        isLoadingChats={isLoadingChats || isLoadingUsers} // Pass combined loading state for sidebar internal loaders
         onChatCreated={handleChatCreated}
       />
   );
@@ -221,7 +226,7 @@ export default function MonochromeChatPage() {
         onEditMessage={handleEditMessage}
         onDeleteMessage={handleDeleteMessage}
         onDeleteChat={handleDeleteChat} 
-        isLoadingMessages={isLoadingChats && !!selectedChatId}
+        isLoadingMessages={isLoadingChats && !!selectedChatId} // Loading messages for a specific chat
         isSendingMessage={isSendingMessage}
       />
     </div>
@@ -229,7 +234,6 @@ export default function MonochromeChatPage() {
 
   return (
     <div className="flex h-screen antialiased text-foreground bg-background overflow-hidden">
-      {/* Desktop Layout: Sidebar on left, ChatView on right */}
       {!isMobileView && (
         <>
           {sidebarComponent}
@@ -237,7 +241,6 @@ export default function MonochromeChatPage() {
         </>
       )}
 
-      {/* Mobile Layout: AnimatePresence for switching views */}
       {isMobileView && (
         <AnimatePresence mode="wait" initial={false}>
           {mobileView === 'list' && (
@@ -264,9 +267,24 @@ export default function MonochromeChatPage() {
               {chatViewComponent}
             </motion.div>
           )}
+           {/* Fallback for mobile if no chat is selected but view is 'chat' (should not happen often) */}
+           {mobileView === 'chat' && !selectedChatId && (
+            <motion.div
+              key="chat-empty-mobile"
+              className="w-full h-full absolute inset-0 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                <p className="text-muted-foreground">Select a chat to view messages.</p>
+                 <Button onClick={handleBackToList} className="mt-4">Back to List</Button>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       )}
     </div>
   );
 }
-

@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -7,13 +8,12 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth, db } from '@/lib/firebase';
 import type { User } from '@/types/chat';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
   currentUser: User | null;
-  loading: boolean;
-  isAuthenticating: boolean;
+  isLoadingAuthState: boolean;
   logout: () => Promise<void>;
 }
 
@@ -21,77 +21,75 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticating, setIsAuthenticating] = useState(true); // Tracks initial auth check
+  const [isLoadingAuthState, setIsLoadingAuthState] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        
         try {
           const userDocSnap = await getDoc(userDocRef);
-
           if (userDocSnap.exists()) {
             setCurrentUser(userDocSnap.data() as User);
           } else {
-            // Create a new user document if it doesn't exist
             const newUser: User = {
               id: firebaseUser.uid,
-              email: firebaseUser.email!, // Email should be present for email/password auth
+              email: firebaseUser.email!,
               name: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
               avatarUrl: firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
             };
-            try {
-              await setDoc(userDocRef, newUser);
-              setCurrentUser(newUser);
-            } catch (setDocError: any) {
-              console.error("Error creating user document in Firestore:", setDocError);
-              // If creating user data fails, sign out to prevent inconsistent state
-              await auth.signOut();
-              setCurrentUser(null);
-            }
+            await setDoc(userDocRef, newUser);
+            setCurrentUser(newUser);
           }
         } catch (error: any) {
             console.error("Error fetching or creating user document in Firestore:", error);
-            // If fetching/creating user data fails, sign out to prevent inconsistent state
-            await auth.signOut();
+            await auth.signOut(); // Sign out to prevent inconsistent state
             setCurrentUser(null);
-            // Potentially redirect to an error page or show a global error message
-            // For now, this will effectively lead to redirection to /login by the subsequent logic
         }
       } else {
         setCurrentUser(null);
-        // Redirect to login if not on a public page and not authenticated
-        // Check if current path is not /login or /signup
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
-             router.push('/login');
-        }
       }
-      setLoading(false);
-      setIsAuthenticating(false);
+      setIsLoadingAuthState(false); // Initial auth state resolved
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, []); // Runs once on mount
 
   const logout = async () => {
-    setLoading(true); // Indicate loading state during logout
+    setIsLoadingAuthState(true); // Indicate transition
     try {
       await auth.signOut();
-      setCurrentUser(null); // Clear user state immediately
+      setCurrentUser(null);
+      // router.push('/login'); // Redirection handled by useEffect below
     } catch (error) {
       console.error("Error signing out: ", error);
-      // Handle sign-out error if necessary, though typically it's reliable
     } finally {
-      setLoading(false); // End loading state
-      router.push('/login'); // Ensure redirection happens after state updates
+      // No need to setIsLoadingAuthState(false) here, onAuthStateChanged will fire with null user
+      // and set it to false. This avoids a flash of content if logout is slow.
+      // Forcing a redirect to login is safer after sign out, handled by the effect.
+       if (pathname !== '/login') { // prevent loop if already on login
+            router.push('/login');
+       } else {
+            setIsLoadingAuthState(false); // if already on login, just stop loading.
+       }
     }
   };
   
-  // Show loading spinner only during initial auth check or if loading state is true but not on login/signup pages
-  if (isAuthenticating && (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/signup')) {
+  useEffect(() => {
+    if (!isLoadingAuthState) { // Only redirect after initial auth state is known
+      const isAuthPage = pathname === '/login' || pathname === '/signup';
+      if (currentUser && isAuthPage) {
+        router.replace('/'); // Logged in, on auth page -> redirect to home
+      } else if (!currentUser && !isAuthPage) {
+        router.replace('/login'); // Not logged in, not on auth page -> redirect to login
+      }
+    }
+  }, [currentUser, isLoadingAuthState, pathname, router]);
+
+  // Show a global loader during the very initial auth state check if NOT on an auth page.
+  if (isLoadingAuthState && pathname !== '/login' && pathname !== '/signup') {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -99,9 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-
+  // For auth pages, AuthLayout will handle its own loading/content based on isLoadingAuthState and currentUser.
+  // For other pages, they will render their content or loaders.
   return (
-    <AuthContext.Provider value={{ currentUser, loading, isAuthenticating, logout }}>
+    <AuthContext.Provider value={{ currentUser, isLoadingAuthState, logout }}>
       {children}
     </AuthContext.Provider>
   );
