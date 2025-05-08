@@ -1,8 +1,10 @@
+
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-// import { GeistMono } from 'geist/font/mono'; // Removed as it causes a module not found error
+// Removed: import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"; 
+import { AuthProvider } from '@/components/auth/auth-provider';
 
 export const metadata: Metadata = {
   title: 'MonochromeChat',
@@ -16,11 +18,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* Use only GeistSans for now, remove GeistMono variable if not used or available */}
       <body className={`${GeistSans.variable} font-sans antialiased`}>
-        {children}
-        <Toaster />
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
 }
+

@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { Chat } from '@/types/chat';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatListItem } from './chat-list-item';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
+import { Loader2, Search, MessageSquareText } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -13,33 +14,42 @@ interface ChatListProps {
   selectedChatId: string | null;
   onSelectChat: (chatId: string) => void;
   className?: string;
+  isLoading: boolean;
 }
 
-export function ChatList({ chats, selectedChatId, onSelectChat, className }: ChatListProps) {
+export function ChatList({ chats, selectedChatId, onSelectChat, className, isLoading }: ChatListProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredChats = useMemo(() => {
     if (!searchTerm) return chats;
     return chats.filter(chat => 
-      chat.name.toLowerCase().includes(searchTerm.toLowerCase())
+      (chat.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (chat.participants.find(p => p.email !== 'currentUserEmailPlaceholder')?.name.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
   }, [chats, searchTerm]);
 
   return (
-    <div className={cn("flex flex-col h-full bg-background", className)}>
+    <div className={cn("flex flex-col h-full bg-sidebar-background", className)}>
       <div className="p-3 border-b border-border">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search chats..." 
-            className="pl-10 text-sm h-9"
+            className="pl-10 text-sm h-9 bg-background focus:bg-background" // Ensure input has contrasting bg
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            disabled={isLoading && chats.length === 0}
           />
         </div>
       </div>
-      <ScrollArea className="flex-1 min-h-0"> {/* Ensure ScrollArea is flexible */}
-        {filteredChats.length > 0 ? (
+      <ScrollArea className="flex-1 min-h-0"> 
+        {isLoading && chats.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full p-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+            <p className="text-sm text-muted-foreground">Loading chats...</p>
+          </div>
+        )}
+        {!isLoading && filteredChats.length > 0 && (
           filteredChats.map((chat) => (
             <ChatListItem
               key={chat.id}
@@ -48,8 +58,19 @@ export function ChatList({ chats, selectedChatId, onSelectChat, className }: Cha
               onSelectChat={onSelectChat}
             />
           ))
-        ) : (
-          <p className="p-4 text-center text-sm text-muted-foreground">No chats found.</p>
+        )}
+        {!isLoading && filteredChats.length === 0 && chats.length > 0 && searchTerm && (
+           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+            <Search className="h-12 w-12 text-muted-foreground/50 mb-3" />
+            <p className="text-sm text-muted-foreground">No chats found for &quot;{searchTerm}&quot;.</p>
+          </div>
+        )}
+        {!isLoading && chats.length === 0 && !searchTerm && (
+          <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+            <MessageSquareText className="h-12 w-12 text-muted-foreground/50 mb-3" />
+            <p className="font-semibold">No chats yet</p>
+            <p className="text-sm text-muted-foreground">Start a new conversation to see it here.</p>
+          </div>
         )}
       </ScrollArea>
     </div>
