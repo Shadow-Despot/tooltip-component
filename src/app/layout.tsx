@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
+// import { GeistMono } from 'geist/font/mono'; // Removed as it causes a module not found error
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"; // Added Toaster
+import { Toaster } from "@/components/ui/toaster"; 
 
 export const metadata: Metadata = {
   title: 'MonochromeChat',
@@ -16,7 +16,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}>
+      {/* Use only GeistSans for now, remove GeistMono variable if not used or available */}
+      <body className={`${GeistSans.variable} font-sans antialiased`}>
         {children}
         <Toaster />
       </body>
