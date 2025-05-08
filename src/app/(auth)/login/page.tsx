@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -24,14 +23,44 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
+    console.log('Attempting login with email:', email); 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login successful, userCredential:', userCredential);
       toast({ title: 'Login Successful', description: 'Welcome back!' });
       router.push('/'); // Redirect to chat page
     } catch (error: any) {
+      console.error('Login failed:', error); 
+      let description = 'An unexpected error occurred. Please try again.';
+      if (error.code) { // Firebase errors usually have a code
+        switch (error.code) {
+          case 'auth/invalid-email':
+            description = 'The email address is not valid.';
+            break;
+          case 'auth/user-disabled':
+            description = 'This user account has been disabled.';
+            break;
+          case 'auth/user-not-found':
+            description = 'No user found with this email. Please check your email or sign up.';
+            break;
+          case 'auth/wrong-password':
+            description = 'Incorrect password. Please try again.';
+            break;
+          case 'auth/invalid-credential':
+             description = 'Incorrect email or password. Please check your credentials and try again.';
+             break;
+          case 'auth/network-request-failed':
+            description = 'Network error. Please check your internet connection and try again.';
+            break;
+          default:
+            description = error.message || description;
+        }
+      } else if (error.message) {
+        description = error.message;
+      }
       toast({
         title: 'Login Failed',
-        description: error.message || 'An unexpected error occurred.',
+        description: description,
         variant: 'destructive',
       });
     } finally {
