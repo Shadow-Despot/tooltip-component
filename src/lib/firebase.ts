@@ -2,25 +2,24 @@
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getAnalytics, isSupported } from "firebase/analytics";
 
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig: FirebaseOptions = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyApvJB9lBsAHVufkUMe7QTsaeMLKTchJgo",
+  authDomain: "chat-34c20.firebaseapp.com",
+  projectId: "chat-34c20",
+  storageBucket: "chat-34c20.appspot.com", // Corrected storageBucket from user input
+  messagingSenderId: "613295809920",
+  appId: "1:613295809920:web:d95c89fe854c3f2e618d65",
+  measurementId: "G-DP37PV68J1"
 };
+
 
 // Initialize Firebase
 let app;
 if (!getApps().length) {
-  if (!firebaseConfig.apiKey) {
-    console.error("Firebase API Key is missing. Please check your .env.local file.");
-    // Potentially throw an error or handle this scenario appropriately
-    // For now, we'll let initialization proceed, but auth/db operations will likely fail.
-  }
   app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
@@ -28,5 +27,16 @@ if (!getApps().length) {
 
 const auth = getAuth(app);
 const db = getFirestore(app);
+let analytics;
 
-export { app, auth, db };
+if (typeof window !== 'undefined') {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  });
+}
+
+
+export { app, auth, db, analytics };
+
