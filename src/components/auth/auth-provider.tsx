@@ -28,85 +28,81 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      setIsLoadingAuthState(true); // Start loading when auth state might change
-      try {
-        if (firebaseUser) {
+      setIsLoadingAuthState(true);
+      if (firebaseUser) {
+        // Immediately set a basic user object from Firebase Auth data.
+        // This allows redirection logic to work even if Firestore fetch is slow or fails.
+        const basicUser: User = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email!,
+          name: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
+          avatarUrl: firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
+        };
+        setCurrentUser(basicUser); // Set basic user information first
+
+        try {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
-            setCurrentUser(userDocSnap.data() as User);
+            setCurrentUser(userDocSnap.data() as User); // Update with full Firestore data
+            console.log('AuthProvider: User document found and currentUser updated from Firestore.');
           } else {
-            // This case might happen if user was created in Auth but not Firestore, or first login.
-            console.log('AuthProvider: User document not found in Firestore, creating new one.');
-            const newUser: User = {
-              id: firebaseUser.uid,
-              email: firebaseUser.email!,
-              name: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
-              avatarUrl: firebaseUser.photoURL || `https://picsum.photos/seed/${firebaseUser.uid}/100/100`,
-            };
-            await setDoc(userDocRef, newUser);
-            setCurrentUser(newUser);
-            console.log('AuthProvider: New user document created and currentUser set.');
+            // Firestore document doesn't exist, create it using the basicUser info.
+            console.log('AuthProvider: User document not found in Firestore, creating new one with basic info.');
+            await setDoc(userDocRef, basicUser);
+            // currentUser is already basicUser, which is correct here.
           }
-        } else {
-          setCurrentUser(null);
-          console.log('AuthProvider: No Firebase user, currentUser set to null.');
+        } catch (error: any) {
+          console.error("AuthProvider: Error fetching/creating user document in Firestore. User will proceed with basic auth data.", error);
+          // Do not sign out. User remains logged in with basic info.
+          // currentUser is already set to basicUser.
+          toast({
+            title: "Profile Sync Issue",
+            description: "Could not fully sync your profile. Some features might be limited. Please check your connection.",
+            variant: "destructive",
+            duration: 7000, // Show for longer
+          });
         }
-      } catch (error: any) {
-          console.error("AuthProvider: Error fetching or creating user document in Firestore:", error);
-          // If Firestore operations fail, sign out to prevent inconsistent state.
-          // onAuthStateChanged will be triggered again with null, which will set currentUser to null.
-          if (auth.currentUser) { // Check if there was a user to sign out (i.e., firebaseUser was not null)
-            try {
-              await auth.signOut();
-              console.log('AuthProvider: Signed out user due to Firestore error.');
-            } catch (signOutError) {
-              console.error("AuthProvider: Error signing out after Firestore error:", signOutError);
-              // If sign out also fails, force currentUser to null to prevent inconsistent states.
-              setCurrentUser(null);
-            }
-          } else {
-             // If firebaseUser was null and an error occurred (e.g. network before processing firebaseUser)
-             setCurrentUser(null);
-          }
-      } finally {
-        setIsLoadingAuthState(false); // Auth state resolved or error handled
-        console.log('AuthProvider: isLoadingAuthState set to false. CurrentUser:', currentUser ? currentUser.email : 'null');
+      } else {
+        setCurrentUser(null);
+        console.log('AuthProvider: No Firebase user, currentUser set to null.');
       }
+      setIsLoadingAuthState(false);
+      // The console log for isLoadingAuthState and currentUser was moved to the redirect effect
+      // to show state *when redirection logic runs*.
     });
 
     return () => unsubscribe();
-  }, []); // Empty dependency array: runs once on mount and cleans up on unmount
+  }, [toast]); // Added toast to dependency array as it's used in the effect.
 
   const logout = async () => {
     setIsLoadingAuthState(true);
     try {
       await auth.signOut();
       // currentUser will be set to null by onAuthStateChanged listener.
-      // isLoadingAuthState will be handled by onAuthStateChanged listener.
-      // Redirection will be handled by the useEffect hook below.
       toast({ title: "Logged Out", description: "You have been successfully logged out."});
       console.log('AuthProvider: User logged out successfully.');
     } catch (error) {
       console.error("Error signing out: ", error);
       toast({ title: "Logout Failed", description: "Could not sign out. Please try again.", variant: "destructive" });
-      setIsLoadingAuthState(false); // Ensure loading state is false on logout error
+      setIsLoadingAuthState(false); 
     }
   };
   
   useEffect(() => {
+    // Log state *before* redirection logic
+    console.log(`AuthProvider (redirect check): isLoadingAuthState: ${isLoadingAuthState}, currentUser: ${!!currentUser}, email: ${currentUser?.email}, pathname: ${pathname}`);
+
     if (isLoadingAuthState) {
       console.log('AuthProvider (redirect logic): Auth state still loading, skipping redirect checks.');
-      return; // Don't redirect while initial auth state is still loading
+      return; 
     }
 
     const isAuthPage = pathname === '/login' || pathname === '/signup';
-    console.log(`AuthProvider (redirect logic): isLoadingAuthState: false, currentUser: ${!!currentUser}, pathname: ${pathname}, isAuthPage: ${isAuthPage}`);
-
+    
     if (currentUser) {
       // User is logged in
       if (isAuthPage) {
-        // If on an auth page (login/signup), redirect to home
         console.log('AuthProvider: User logged in, on auth page, redirecting to /');
         router.replace('/');
       } else {
@@ -115,7 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       // User is NOT logged in
       if (!isAuthPage) {
-        // If not on an auth page, redirect to login
         console.log('AuthProvider: User not logged in, not on auth page, redirecting to /login');
         router.replace('/login');
       } else {
@@ -124,8 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser, isLoadingAuthState, pathname, router]);
 
-  // Show a global loader during the very initial auth state check if NOT on an auth page.
-  // AuthLayout handles its own loader for auth pages.
   if (isLoadingAuthState && !pathname.startsWith('/login') && !pathname.startsWith('/signup')) {
     console.log('AuthProvider: Global loader shown (isLoadingAuthState true, not on auth page).');
     return (
