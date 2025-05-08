@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,8 @@ import type { User } from '@/types/chat';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+// useRouter is not needed for redirection here anymore, AuthProvider handles it.
+// import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
@@ -23,7 +23,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const router = useRouter();
+  // const router = useRouter(); // Removed
   const { toast } = useToast();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -51,11 +51,15 @@ export default function SignupPage() {
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
 
       toast({ title: 'Signup Successful', description: 'Your account has been created.' });
-      router.push('/'); // Redirect to chat page
+      // router.push('/'); // Removed: AuthProvider will redirect based on auth state change
     } catch (error: any) {
+      let description = error.message || 'An unexpected error occurred.';
+       if (error.code === 'auth/api-key-not-valid') {
+            description = 'Firebase API Key is not valid. Please check your Firebase configuration.';
+       }
       toast({
         title: 'Signup Failed',
-        description: error.message || 'An unexpected error occurred.',
+        description: description,
         variant: 'destructive',
       });
     } finally {

@@ -8,7 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+// useRouter is not needed for redirection here anymore, AuthProvider handles it.
+// import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
@@ -17,7 +18,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
+  // const router = useRouter(); // Removed
   const { toast } = useToast();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -28,7 +29,7 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Login successful, userCredential:', userCredential);
       toast({ title: 'Login Successful', description: 'Welcome back!' });
-      router.push('/'); // Redirect to chat page
+      // router.push('/'); // Removed: AuthProvider will redirect based on auth state change
     } catch (error: any) {
       console.error('Login failed:', error); 
       let description = 'An unexpected error occurred. Please try again.';
@@ -51,6 +52,9 @@ export default function LoginPage() {
              break;
           case 'auth/network-request-failed':
             description = 'Network error. Please check your internet connection and try again.';
+            break;
+          case 'auth/api-key-not-valid':
+            description = 'Firebase API Key is not valid. Please check your Firebase configuration.';
             break;
           default:
             description = error.message || description;

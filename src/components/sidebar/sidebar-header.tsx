@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,13 +9,13 @@ import { Skeleton } from "../ui/skeleton";
 
 interface SidebarHeaderProps {
   onAddNewChat: () => void;
-  onAddNewContact: () => void; // Changed to reflect adding contact by email
+  onAddNewContact: () => void; 
 }
 
 export function SidebarHeader({ onAddNewChat, onAddNewContact }: SidebarHeaderProps) {
-  const { currentUser, logout, loading } = useAuth();
+  const { currentUser, logout, isLoadingAuthState } = useAuth();
 
-  if (loading || !currentUser) {
+  if (isLoadingAuthState || !currentUser) {
     return (
       <div className="p-3 border-b border-border bg-secondary flex justify-between items-center h-[60px] sm:h-[68px]">
         <Skeleton className="h-10 w-10 rounded-full" />
@@ -57,8 +56,8 @@ export function SidebarHeader({ onAddNewChat, onAddNewContact }: SidebarHeaderPr
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={logout}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+            <DropdownMenuItem onClick={logout} disabled={isLoadingAuthState}>
+              {isLoadingAuthState ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
